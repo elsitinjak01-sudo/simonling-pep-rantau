@@ -20,9 +20,16 @@ const Store = (() => {
   function load() {
     try {
       const raw = localStorage.getItem(KEY);
-      if (raw) return Object.assign(empty(), JSON.parse(raw));
+      if (raw) return withDefaults(JSON.parse(raw));
     } catch (e) { console.warn('Gagal membaca data', e); }
     return seed();
+  }
+
+  // Lengkapi data lama dengan kelompok baku mutu yang baru ditambahkan.
+  function withDefaults(obj) {
+    const d = Object.assign(empty(), obj);
+    d.bakuMutu = Object.assign(JSON.parse(JSON.stringify(REGULASI.bakuMutu)), obj.bakuMutu);
+    return d;
   }
 
   function save() {
@@ -54,8 +61,23 @@ const Store = (() => {
   function importJSON(text) {
     const obj = JSON.parse(text);
     if (!Array.isArray(obj.titik)) throw new Error('Format file tidak dikenali');
-    db = Object.assign(empty(), obj);
+    db = withDefaults(obj);
     save();
+  }
+  // Tambahkan data dari file tanpa menghapus data yang sudah ada.
+  function mergeJSON(text) {
+    const obj = JSON.parse(text);
+    let n = 0;
+    for (const col of ['titik', 'hasil', 'lb3', 'sampah']) {
+      for (const item of obj[col] || []) {
+        if (!item.id || db[col].some(x => x.id === item.id)) continue;
+        db[col].push(item);
+        n++;
+      }
+    }
+    if (!n) throw new Error('Tidak ada data baru di file ini.');
+    save();
+    return n;
   }
   function reset(withSample) {
     db = withSample ? seed() : empty();
@@ -108,6 +130,7 @@ const Store = (() => {
   }
 
   let db = load();
+  save();
 
-  return { list, get, upsert, remove, setBakuMutu, setMasaSimpan, exportJSON, importJSON, reset, get db() { return db; } };
+  return { list, get, upsert, remove, setBakuMutu, setMasaSimpan, exportJSON, importJSON, mergeJSON, reset, get db() { return db; } };
 })();

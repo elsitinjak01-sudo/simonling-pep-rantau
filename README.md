@@ -11,10 +11,11 @@ Monitoring pelaksanaan pemantauan lingkungan wajib dan pengelolaan limbah:
 | **Air Limbah Domestik** | Input hasil uji, evaluasi otomatis vs Permen LHK P.68/2016, grafik tren + garis BM, ekspor CSV |
 | **Emisi Sumber Tidak Bergerak** | Genset/gas engine, heater/boiler, flare – Permen LH 13/2009 & Permen LHK 11/2021 |
 | **Kualitas Udara Ambien** | PP 22/2021 Lampiran VII |
+| **Air Limbah Operasi** | Air limbah kegiatan migas / sekitar sumur & SP (Temperatur, pH, COD, TDS, Sulfida, Minyak & Lemak, Amonia, Fenol, Klorida). Mendukung **titik pembanding** (mis. air sumur) yang ditampilkan sebagai acuan dan tidak dihitung dalam % penaatan |
 | **Limbah B3** | Logbook masuk/keluar TPS, no. manifest Festronik, stok, umur simpan (FIFO) & peringatan masa simpan, neraca per triwulan |
 | **Sampah** | Timbulan organik/anorganik/residu, pengelolaan (kompos, bank sampah, daur ulang, TPA), % reduksi |
 | **Baku Mutu** | Semua nilai BM & batas masa simpan dapat diubah |
-| **Backup & Data** | Backup/restore JSON, hapus data contoh |
+| **Backup & Data** | Backup/restore JSON, tambah data dari file JSON tanpa menghapus data lama, hapus data contoh |
 
 > ⚠️ **Penting**
 > - Data awal adalah **contoh fiktif** (bertanda "contoh"). Hapus di menu *Backup & Data* sebelum dipakai resmi.
@@ -35,6 +36,8 @@ Settings → Pages → *Deploy from a branch* → `main` / root. Untuk data inte
 ## Penyimpanan data
 Versi ini menyimpan data di **browser masing-masing pengguna** (localStorage) — cocok untuk uji coba / satu operator. Lakukan backup JSON secara rutin.
 
+**Jangan menyimpan data hasil uji asli di repo ini** (repo bersifat publik). Simpan data asli di browser/backup JSON internal, atau di database dengan akses terbatas.
+
 Untuk pemakaian bersama (multi-user, login, audit trail), modul `js/store.js` dapat diganti dengan backend (mis. Supabase/PostgreSQL, Firebase, atau API server internal) tanpa mengubah halaman lain.
 
 ## Struktur
@@ -49,6 +52,6 @@ js/app.js         logika penaatan, halaman, grafik
 ## Rencana pengembangan
 - Backend database & login per peran (admin HSSE, operator lapangan, viewer)
 - Upload dokumen LHU (PDF) per hasil uji
-- Kebisingan, air permukaan/air tanah, air terproduksi
+- Kebisingan, air permukaan/air tanah
 - Ekspor laporan semester RKL-RPL / PROPER (Excel/PDF)
 - Notifikasi email jadwal sampling & masa simpan LB3

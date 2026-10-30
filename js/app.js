@@ -6,7 +6,7 @@
   const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
   const fmtTgl = s => { if (!s) return '-'; const [y, m, d] = s.split('-'); return `${+d} ${BULAN[+m - 1]} ${y}`; };
   const num = v => (v === '' || v == null || isNaN(+v)) ? null : +v;
-  const fmtNum = v => v == null ? '-' : (+v).toLocaleString('id-ID', { maximumFractionDigits: 2 });
+  const fmtNum = v => v == null ? '-' : (+v).toLocaleString('id-ID', { maximumFractionDigits: 3 });
   const today = () => new Date().toISOString().slice(0, 10);
   const daysBetween = (a, b) => Math.floor((new Date(b) - new Date(a)) / 86400000);
 
@@ -28,12 +28,14 @@
     if (!t) return { status: 'nodata', lewat: [] };
     const lewat = [];
     let ada = false;
+    // Titik pembanding hanya acuan, tidak dinilai penaatannya.
     for (const p of bmFor(t).parameter) {
       const ok = cekParam(p, num(h.nilai[p.kode]));
       if (ok === null) continue;
       ada = true;
       if (!ok) lewat.push(p.kode);
     }
+    if (t.jenis === 'pembanding') return { status: 'pembanding', lewat };
     return { status: !ada ? 'nodata' : lewat.length ? 'melebihi' : 'taat', lewat };
   }
 
@@ -56,6 +58,10 @@
       const endMonth = (i + 1) * (12 / n); // bulan terakhir periode (1-12)
       const lewatWaktu = th < now.getFullYear() || (th === now.getFullYear() && now.getMonth() + 1 > endMonth);
       const berjalan = th === now.getFullYear() && !lewatWaktu && now.getMonth() + 1 > endMonth - 12 / n;
+      // Periode yang berakhir sebelum titik mulai dipantau tidak menjadi kewajiban.
+      const sebelumMulai = t.mulai && `${th}-${String(endMonth).padStart(2, '0')}` < t.mulai.slice(0, 7);
+      if (sebelumMulai && !hs.length) return { i, hasil: [], status: 'na' };
+      if (t.jenis === 'pembanding') return { i, hasil: hs, status: hs.length ? 'pembanding' : 'belum' };
       if (hs.length) {
         const ev = hs.map(evalHasil);
         return { i, hasil: hs, status: ev.some(e => e.status === 'melebihi') ? 'melebihi' : 'taat' };
@@ -65,10 +71,10 @@
   }
 
   function rekapAspek(aspek) {
-    const titik = Store.list('titik').filter(t => t.aktif && t.aspek === aspek);
+    const titik = Store.list('titik').filter(t => t.aktif && t.aspek === aspek && t.jenis !== 'pembanding');
     let wajib = 0, terlaksana = 0, taat = 0, melebihi = 0, terlewat = 0;
     for (const t of titik) for (const p of statusPeriode(t)) {
-      if (p.status === 'belum' || p.status === 'berjalan') continue; // belum jatuh tempo
+      if (['belum', 'berjalan', 'na'].includes(p.status)) continue; // belum jatuh tempo / belum berlaku
       wajib++;
       if (p.status === 'terlewat') terlewat++;
       else { terlaksana++; p.status === 'taat' ? taat++ : melebihi++; }
@@ -110,7 +116,9 @@
 
   // ---------- UI helper ----------
   const badge = (status, text) => `<span class="badge ${status}">${esc(text ?? LABEL_STATUS[status] ?? status)}</span>`;
-  const LABEL_STATUS = { taat: 'Taat', melebihi: 'Melebihi BM', nodata: 'Tanpa data', terlewat: 'Tidak dilaksanakan', berjalan: 'Periode berjalan', belum: 'Belum jatuh tempo',
+  const jenisLabel = j => (REGULASI.jenisTitik[j] || j).replace('Titik ', '');
+  const bmText = p => p.min != null && p.max != null ? `${p.min}–${p.max}` : p.max != null ? `≤${p.max}` : p.min != null ? `≥${p.min}` : '-';
+  const LABEL_STATUS = { na: 'Sebelum mulai dipantau', pembanding: 'Pembanding', taat: 'Taat', melebihi: 'Melebihi BM', nodata: 'Tanpa data', terlewat: 'Tidak dilaksanakan', berjalan: 'Periode berjalan', belum: 'Belum jatuh tempo',
     aman: 'Aman', segera: '≤14 hari', lewat: 'Lewat masa simpan', kosong: 'Kosong' };
 
   function card(title, value, sub, cls = '') {
@@ -193,7 +201,7 @@
   const pages = {};
 
   pages.dashboard = () => {
-    const asp = ['ald', 'emisi', 'ambien'];
+    const asp = ['ald', 'emisi', 'ambien', 'alo'];
     const rek = Object.fromEntries(asp.map(a => [a, rekapAspek(a)]));
     const lb3 = rekapLB3();
     const lb3Warn = lb3.filter(r => r.status === 'lewat' || r.status === 'segera');
@@ -264,14 +272,14 @@
     const titik = Store.list('titik').filter(t => t.aktif);
     const filter = sessionStorage.getItem('jadwalAspek') || '';
     const rows = titik.filter(t => !filter || t.aspek === filter).sort((a, b) => a.aspek.localeCompare(b.aspek) || a.kode.localeCompare(b.kode));
-    const icon = { taat: '✔', melebihi: '✖', terlewat: '!', berjalan: '…', belum: '' };
+    const icon = { na: '', pembanding: '◆', taat: '✔', melebihi: '✖', terlewat: '!', berjalan: '…', belum: '' };
     return `
       <h2>Pelaksanaan Pemantauan Lingkungan Wajib ${tahun}</h2>
       <p class="muted">Matriks realisasi vs kewajiban pemantauan per titik sesuai frekuensi. Klik sel untuk input / lihat hasil.</p>
       <div class="toolbar">
         <select id="fAspek">${opt('', 'Semua aspek', filter)}${Object.entries(REGULASI.aspek).map(([k, v]) => opt(k, v.nama, filter)).join('')}</select>
         <div class="legend">
-          ${['taat', 'melebihi', 'terlewat', 'berjalan', 'belum'].map(s => `<span><i class="cell-sw ${s}"></i>${LABEL_STATUS[s]}</span>`).join('')}
+          ${['taat', 'melebihi', 'terlewat', 'berjalan', 'belum', 'pembanding', 'na'].map(s => `<span><i class="cell-sw ${s}"></i>${LABEL_STATUS[s]}</span>`).join('')}
         </div>
       </div>
       <div class="card scroll">
@@ -279,7 +287,7 @@
         ${rows.map(t => {
           const per = statusPeriode(t);
           const span = 12 / per.length;
-          return `<tr><td><b>${esc(t.kode)}</b><br><small>${esc(t.nama)}</small></td><td>${t.jenis === 'penaatan' ? 'Penaatan' : 'Pantau'}</td><td>${esc(REGULASI.frekuensi[t.frekuensi]?.label.split(' ')[0])}</td>
+          return `<tr><td><b>${esc(t.kode)}</b><br><small>${esc(t.nama)}</small></td><td>${esc(jenisLabel(t.jenis))}</td><td>${esc(REGULASI.frekuensi[t.frekuensi]?.label.split(' ')[0])}</td>
             ${per.map(p => `<td colspan="${span}" class="cell ${p.status}" data-titik="${t.id}" data-per="${p.i}" title="${periodeLabel(t, p.i)}: ${LABEL_STATUS[p.status]}">${icon[p.status]}${p.hasil.length ? `<small> ${p.hasil.map(h => +h.tanggal.slice(8)).join(',')}</small>` : ''}</td>`).join('')}</tr>`;
         }).join('') || `<tr><td colspan="15" class="muted">Belum ada titik. Tambahkan di menu Titik Penaatan.</td></tr>`}
         </tbody></table>
@@ -307,7 +315,7 @@
       <div class="card scroll"><table class="tbl"><thead><tr><th>Kode</th><th>Nama</th><th>Aspek</th><th>Baku Mutu</th><th>Jenis</th><th>Frekuensi</th><th>Lokasi</th><th>Koordinat</th><th>Status</th><th></th></tr></thead><tbody>
         ${rows.map(t => `<tr class="${t.aktif ? '' : 'inactive'}">
           <td><b>${esc(t.kode)}</b>${t.contoh ? ' <span class="tag">contoh</span>' : ''}</td><td>${esc(t.nama)}</td><td>${esc(REGULASI.aspek[t.aspek]?.nama)}</td>
-          <td>${esc(Store.db.bakuMutu[t.kelompok]?.label || t.kelompok)}</td><td>${t.jenis === 'penaatan' ? 'Penaatan' : 'Pantau'}</td>
+          <td>${esc(Store.db.bakuMutu[t.kelompok]?.label || t.kelompok)}</td><td>${esc(jenisLabel(t.jenis))}</td>
           <td>${esc(REGULASI.frekuensi[t.frekuensi]?.label)}</td><td>${esc(t.lokasi)}</td>
           <td>${t.lat && t.lng ? `<a target="_blank" rel="noopener" href="https://www.google.com/maps?q=${t.lat},${t.lng}">${t.lat}, ${t.lng}</a>` : '-'}</td>
           <td>${t.aktif ? badge('taat', 'Aktif') : badge('nodata', 'Nonaktif')}</td>
@@ -315,7 +323,7 @@
       </tbody></table></div>`;
   };
   pages.titik.bind = () => {
-    $('#addTitik').onclick = () => formTitik({ aspek: 'ald', kelompok: 'ald', jenis: 'penaatan', frekuensi: 'bulanan', aktif: true });
+    $('#addTitik').onclick = () => formTitik({ aspek: 'ald', kelompok: 'ald', jenis: 'penaatan', frekuensi: 'bulanan', aktif: true, mulai: today() });
     $$('[data-edit]').forEach(b => b.onclick = () => formTitik({ ...titikById(b.dataset.edit) }));
     $$('[data-del]').forEach(b => b.onclick = () => {
       const t = titikById(b.dataset.del);
@@ -335,9 +343,10 @@
         <label>Nama titik<input name="nama" required value="${esc(t.nama)}"></label>
         <label>Aspek<select name="aspek" id="fA">${Object.entries(REGULASI.aspek).map(([k, v]) => opt(k, v.nama, t.aspek)).join('')}</select></label>
         <label>Baku mutu / sumber<select name="kelompok" id="fK">${kelompokOptions(t.aspek, t.kelompok)}</select></label>
-        <label>Jenis titik<select name="jenis">${opt('penaatan', 'Titik Penaatan', t.jenis)}${opt('pantau', 'Titik Pantau', t.jenis)}</select></label>
+        <label>Jenis titik<select name="jenis">${Object.entries(REGULASI.jenisTitik).map(([k, v]) => opt(k, v, t.jenis)).join('')}</select></label>
         <label>Frekuensi wajib<select name="frekuensi">${Object.entries(REGULASI.frekuensi).map(([k, v]) => opt(k, v.label, t.frekuensi)).join('')}</select></label>
         <label>Lokasi / fasilitas<input name="lokasi" value="${esc(t.lokasi)}"></label>
+        <label>Mulai dipantau<input name="mulai" type="date" value="${esc(t.mulai)}"></label>
         <label>Dasar kewajiban (no. PERTEK/PKPLH)<input name="dasar" value="${esc(t.dasar)}"></label>
         <label>Lintang (lat)<input name="lat" type="number" step="any" value="${esc(t.lat)}"></label>
         <label>Bujur (lng)<input name="lng" type="number" step="any" value="${esc(t.lng)}"></label>
@@ -387,11 +396,12 @@
       ${Object.entries(groups).map(([kel, hs]) => {
         const bm = Store.db.bakuMutu[kel];
         return `<section class="card scroll"><h3>${esc(bm?.label || kel)}${bm?.verifikasi ? ' <span class="tag warn">verifikasi BM</span>' : ''}</h3>
-        <table class="tbl"><thead><tr><th>Tanggal</th><th>Titik</th>${bm.parameter.map(p => `<th>${esc(p.kode)}<br><small>${esc(p.satuan)} · BM ${p.min != null ? p.min + '–' : '≤'}${p.max ?? ''}</small></th>`).join('')}<th>Status</th><th>Lab / LHU</th><th></th></tr></thead><tbody>
+        <table class="tbl"><thead><tr><th>Tanggal</th><th>Titik</th>${bm.parameter.map(p => `<th>${esc(p.kode)}<br><small>${esc(p.satuan)} · BM ${bmText(p)}</small></th>`).join('')}<th>Status</th><th>Lab / LHU</th><th></th></tr></thead><tbody>
         ${hs.map(h => { const t = titikById(h.titikId), e = evalHasil(h);
-          return `<tr><td>${fmtTgl(h.tanggal)}</td><td>${esc(t.kode)}</td>
-            ${bm.parameter.map(p => { const v = num(h.nilai[p.kode]); const ok = cekParam(p, v); return `<td class="${ok === false ? 'cell-bad' : ''}">${fmtNum(v)}</td>`; }).join('')}
-            <td>${badge(e.status)}</td><td><small>${esc(h.lab)}${h.lhu ? '<br>' + esc(h.lhu) : ''}</small></td>
+          const ref = t.jenis === 'pembanding';
+          return `<tr class="${ref ? 'row-ref' : ''}"><td>${fmtTgl(h.tanggal)}</td><td>${esc(t.kode)}</td>
+            ${bm.parameter.map(p => { const v = num(h.nilai[p.kode]); const ok = cekParam(p, v); return `<td class="${ok === false ? (ref ? 'cell-ref' : 'cell-bad') : ''}">${fmtNum(v)}</td>`; }).join('')}
+            <td>${badge(e.status)}</td><td class="col-lab"><small>${esc(h.lab)}${h.lhu ? '<br>' + esc(h.lhu) : ''}</small></td>
             <td class="actions"><button class="btn sm" data-edit="${h.id}">Ubah</button><button class="btn sm danger" data-del="${h.id}">Hapus</button></td></tr>`; }).join('')}
         </tbody></table></section>`;
       }).join('') || `<div class="card muted">Belum ada hasil pemantauan pada ${tahun}.</div>`}`;
@@ -423,7 +433,7 @@
     if (!titik.length) { alert('Tambahkan titik untuk aspek ini terlebih dahulu.'); location.hash = 'titik'; return; }
     const paramFields = tid => {
       const t = titikById(tid) || titik[0];
-      return bmFor(t).parameter.map(p => `<label>${esc(p.kode)} <small>(${esc(p.satuan)}; BM ${p.min != null ? p.min + '–' : '≤'}${p.max ?? ''})</small>
+      return bmFor(t).parameter.map(p => `<label>${esc(p.kode)} <small>(${esc(p.satuan)}; BM ${bmText(p)})</small>
         <input name="p:${esc(p.kode)}" type="number" step="any" value="${esc(h.nilai[p.kode])}"></label>`).join('');
     };
     openModal(h.id ? 'Ubah Hasil Uji' : 'Input Hasil Uji – ' + REGULASI.aspek[aspek].nama, `
@@ -445,7 +455,7 @@
     $('#hT').onchange = e => { $('#hP').innerHTML = paramFields(e.target.value); };
   }
 
-  for (const a of ['ald', 'emisi', 'ambien']) { pages[a] = () => hasilPage(a); pages[a].bind = () => bindHasil(a); }
+  for (const a of ['ald', 'emisi', 'ambien', 'alo']) { pages[a] = () => hasilPage(a); pages[a].bind = () => bindHasil(a); }
 
   pages.lb3 = () => {
     const rek = rekapLB3();
@@ -606,6 +616,7 @@
         <div class="toolbar">
           <button class="btn primary" id="exp">⬇️ Backup (JSON)</button>
           <label class="btn">⬆️ Restore (JSON)<input type="file" id="imp" accept=".json,application/json" hidden></label>
+          <label class="btn">➕ Tambah data dari file (JSON)<input type="file" id="merge" accept=".json,application/json" hidden></label>
           <button class="btn" id="delContoh">Hapus data contoh</button>
           <button class="btn danger" id="resetAll">Kosongkan semua data</button>
           <button class="btn ghost" id="resetSample">Muat ulang data contoh</button>
@@ -617,6 +628,11 @@
     $('#imp').onchange = async e => {
       const f = e.target.files[0]; if (!f) return;
       try { Store.importJSON(await f.text()); alert('Data berhasil dipulihkan.'); render(); }
+      catch (err) { alert('Gagal: ' + err.message); }
+    };
+    $('#merge').onchange = async e => {
+      const f = e.target.files[0]; if (!f) return;
+      try { alert(Store.mergeJSON(await f.text()) + ' entri ditambahkan.'); initYear(); render(); }
       catch (err) { alert('Gagal: ' + err.message); }
     };
     $('#delContoh').onclick = () => {

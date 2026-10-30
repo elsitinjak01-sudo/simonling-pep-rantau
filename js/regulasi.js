@@ -21,6 +21,11 @@ const REGULASI = {
       regulasi: 'PP No. 22/2021 Lampiran VII – Baku Mutu Udara Ambien',
       frekuensiDefault: 'semester',
     },
+    alo: {
+      nama: 'Air Limbah Operasi / Air Terproduksi',
+      regulasi: 'Baku mutu air limbah kegiatan migas sesuai Persetujuan Teknis / PKPLH (nilai awal mengikuti BM pada LHU laboratorium)',
+      frekuensiDefault: 'bulanan',
+    },
   },
 
   // Baku mutu per kelompok. min/max opsional; satuan untuk tampilan.
@@ -80,6 +85,28 @@ const REGULASI = {
         { kode: 'Pb', satuan: 'µg/Nm³ (24 jam)', max: 2 },
       ],
     },
+    alo: {
+      label: 'Air Limbah Operasi Migas',
+      verifikasi: true,
+      parameter: [
+        { kode: 'Temperatur', satuan: '°C', max: 45 },
+        { kode: 'pH', satuan: '-', min: 6, max: 9 },
+        { kode: 'COD', satuan: 'mg/L', max: 300 },
+        { kode: 'TDS', satuan: 'mg/L', max: 4000 },
+        { kode: 'Sulfida (H2S)', satuan: 'mg/L', max: 1 },
+        { kode: 'Minyak & Lemak', satuan: 'mg/L', max: 15 },
+        { kode: 'Amonia (NH3-N)', satuan: 'mg/L', max: 10 },
+        { kode: 'Fenol Total', satuan: 'mg/L', max: 2 },
+        { kode: 'Klorida', satuan: 'mg/L' },
+        { kode: 'Specific Gravity', satuan: 'g/cc' },
+      ],
+    },
+  },
+
+  jenisTitik: {
+    penaatan: 'Titik Penaatan',
+    pantau: 'Titik Pantau',
+    pembanding: 'Titik Pembanding',
   },
 
   sumberEmisi: {

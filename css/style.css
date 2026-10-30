@@ -86,6 +86,7 @@ textarea { width: 100%; }
 .cell.melebihi, .cell-sw.melebihi { background: var(--bad); color: #fff; }
 .cell.terlewat, .cell-sw.terlewat { background: var(--bad-bg); color: var(--bad); }
 .cell.berjalan, .cell-sw.berjalan { background: var(--warn-bg); color: var(--warn); }
+.cell-sw.na { background: var(--idle-bg); }
 .cell.belum, .cell-sw.belum { background: var(--idle-bg); }
 .cell:hover { outline: 2px solid var(--primary); outline-offset: -2px; }
 .legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--muted); }
@@ -125,3 +126,11 @@ label.check { flex-direction: row; align-items: center; gap: 6px; margin-top: 8p
   .topbar, .sidebar, .toolbar, .actions { display: none !important; }
   main { padding: 0; }
 }
+
+/* Titik pembanding: acuan, tidak dinilai penaatannya */
+.badge.pembanding { background: var(--idle-bg); color: var(--primary); }
+.cell.pembanding, .cell-sw.pembanding { background: var(--idle-bg); color: var(--primary); }
+.tbl tr.row-ref td { font-style: italic; color: var(--muted); }
+.cell-ref { text-decoration: underline dotted; }
+.cell.na { background: repeating-linear-gradient(45deg, transparent 0 4px, var(--idle-bg) 4px 8px); cursor: default; }
+.tbl td.col-lab { min-width: 220px; }
