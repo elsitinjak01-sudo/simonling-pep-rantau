@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monitoring Lingkungan – PEP Rantau</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+    <div class="brand">
+      <strong>SIMONLING</strong>
+      <span>Sistem Monitoring Pengelolaan Lingkungan · Pertamina EP Rantau Field</span>
+    </div>
+    <div class="year-picker">
+      <label for="tahun">Tahun</label>
+      <select id="tahun"></select>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="sidebar">
+      <a href="#dashboard" data-page="dashboard">📊 Dashboard</a>
+      <a href="#jadwal" data-page="jadwal">🗓️ Pelaksanaan Pemantauan</a>
+      <a href="#titik" data-page="titik">📍 Titik Penaatan & Pantau</a>
+      <div class="nav-group">Hasil Pemantauan</div>
+      <a href="#ald" data-page="ald">💧 Air Limbah Domestik</a>
+      <a href="#emisi" data-page="emisi">🏭 Emisi Sumber Tidak Bergerak</a>
+      <a href="#ambien" data-page="ambien">🌫️ Kualitas Udara Ambien</a>
+      <div class="nav-group">Pengelolaan Limbah</div>
+      <a href="#lb3" data-page="lb3">☣️ Limbah B3</a>
+      <a href="#sampah" data-page="sampah">🗑️ Sampah</a>
+      <div class="nav-group">Sistem</div>
+      <a href="#baku" data-page="baku">⚖️ Baku Mutu</a>
+      <a href="#data" data-page="data">💾 Backup & Data</a>
+    </nav>
+
+    <main id="main"></main>
+  </div>
+
+  <dialog id="modal">
+    <form method="dialog" id="modalForm">
+      <h3 id="modalTitle"></h3>
+      <div id="modalBody"></div>
+      <div class="modal-actions">
+        <button value="cancel" formnovalidate class="btn ghost">Batal</button>
+        <button value="ok" class="btn primary" id="modalOk">Simpan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="js/regulasi.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
